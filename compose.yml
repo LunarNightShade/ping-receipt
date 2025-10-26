@@ -1,0 +1,12 @@
+name: PingApp
+services:
+  ping-app:
+    container_name: ping-app
+    volumes:
+            - type: bind 
+              source: ./database/database.sqlite
+              target: /app/database/database.sqlite
+    ports:
+            - 8000:80
+    image: ping-app:latest
+    restart: unless-stopped
