@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name='twitter:card' content='summary' />
+        <meta name='twitter:title' content='Send a Receipt Message' />
+        <meta name='twitter:description' content='Send a receipt message to Lunar Aurora. It will print out on my desk!' />
+        <meta name="twitter:image" content="https://i.imgur.com/LTGIVBj.png" />
     <title>Send a Receipt Message</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
@@ -50,7 +54,7 @@
                 <div class="px-6 pb-4 border-b-2 border-gray-300 border-dashed">
                     <div class="text-center">
                         <div class="text-2xl font-bold mb-0 tracking-wide">PING</div>
-                        <div class="text-xs text-gray-600 uppercase tracking-wider">Message for Andrew Schmelyun</div>
+                        <div class="text-xs text-gray-600 uppercase tracking-wider">Message for Lunar Aurora</div>
                     </div>
                 </div>
 
@@ -78,7 +82,7 @@
                                     rows="6"
                                     maxlength="1024"
                                     placeholder="Type your message here..."
-                                    class="w-[42ch] font-mono p-2 box-content text-sm border border-gray-300 rounded focus:outline-none focus:ring focus:ring-gray-700 focus:border-transparent resize-none"
+                                    class="w-[48ch] font-mono p-2 box-content text-sm border border-gray-300 rounded focus:outline-none focus:ring focus:ring-gray-700 focus:border-transparent resize-none"
                                     oninput="updateCharCount()"
                                 >{{ old('message') }}</textarea>
                                 <input type="hidden" id="transaction" name="transaction" value="{{ $transaction }}">
@@ -113,7 +117,7 @@
         </div>
         <div class="text-center text-xs py-4 opacity-50">
             <p class="mb-1">Basic text only (no emojis, special symbols)</p>
-            <p>Printer text width is 42 characters wide</p>
+            <p>Printer text width is 48 characters wide</p>
         </div>
     </div>
 

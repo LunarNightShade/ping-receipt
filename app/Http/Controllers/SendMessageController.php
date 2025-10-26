@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Receipt;
-use Mike42\Escpos\PrintConnectors\FilePrintConnector;
+use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
 use Mike42\Escpos\Printer;
 
 class SendMessageController extends Controller
@@ -32,7 +32,7 @@ class SendMessageController extends Controller
 
 	    Receipt::create($request->only(['transaction', 'message']));
 
-        $connector = new FilePrintConnector('/dev/usb/lp0');
+        $connector = new NetworkPrintConnector("192.168.1.217",9100);
         $printer = new Printer($connector);
 
         // let me know something's coming
@@ -46,20 +46,20 @@ class SendMessageController extends Controller
         $printer->feed(2);
         $printer->setTextSize(1, 1);
         $printer->setEmphasis(false);
-        $printer->text('MESSAGE FOR ANDREW SCHMELYUN');
+        $printer->text('MESSAGE FOR LUNAR AURORA');
         $printer->feed(1);
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
-        $printer->text(str_repeat('-', 42));
+        $printer->text(str_repeat('-', 48));
 
         $printer->feed(2);
-        $printer->text('TIMESTAMP:' . str_repeat(' ', 15) . now()->format('m/d/y h:i A'));
+        $printer->text('TIMESTAMP:' . str_repeat(' ', 21) . now()->format('m/d/y h:i A'));
         $printer->feed(1);
-        $printer->text('TRANSACTION #:' . str_repeat(' ', 23) . $request->transaction);
-        $printer->feed(4);
+        $printer->text('TRANSACTION #:' . str_repeat(' ', 29) . $request->transaction);
+        $printer->feed(2);
 
         $printer->text($request->message);
-        $printer->feed(4);
+        $printer->feed(2);
 
         $printer->cut();
         $printer->close();
