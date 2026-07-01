@@ -1,12 +1,23 @@
 name: PingApp
+
 services:
   ping-app:
     container_name: ping-app
-    volumes:
-            - type: bind 
-              source: ./database/database.sqlite
-              target: /app/database/database.sqlite
-    ports:
-            - 8000:80
+    build: .
     image: ping-app:latest
     restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      # Point this at your receipt printer on the network.
+      PRINTER_HOST: "192.168.1.217"
+      PRINTER_PORT: "9100"
+      # APP_ENV/APP_DEBUG default to production/false (baked into the image).
+      # Set a fixed key so sessions survive restarts (see the README):
+      # APP_KEY: "base64:paste-a-generated-key-here"
+    volumes:
+      # Persist submitted messages. The host file must exist first:
+      #   touch database/database.sqlite
+      - type: bind
+        source: ./database/database.sqlite
+        target: /app/database/database.sqlite
