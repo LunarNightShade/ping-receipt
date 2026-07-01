@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('receipts', function (Blueprint $table) {
             $table->id();
-	    $table->string('transaction');
-	    $table->text('message');
-	    $table->boolean('has_printed')->default(false);
+            $table->string('transaction');
+            $table->text('message');
+            $table->boolean('has_printed')->default(false);
             $table->timestamps();
         });
     }
