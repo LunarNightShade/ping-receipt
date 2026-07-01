@@ -6,5 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Receipt extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'transaction',
+        'message',
+    ];
+
+    protected $casts = [
+        'has_printed' => 'boolean',
+    ];
 }
