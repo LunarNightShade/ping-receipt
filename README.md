@@ -108,13 +108,15 @@ The `/send-message` endpoint is rate limited to 10 requests/minute per IP ([`rou
 
 If the printer can't be reached (powered off, out of range, a network hiccup), the print job is retried on its own with a growing delay: after 10 seconds, 30 seconds, 1 minute, 5 minutes, then every 15 minutes. It keeps trying for `PRINTER_RETRY_HOURS` (6 hours by default) from the moment the message was sent, so a message sent while the printer is off still prints when you switch it back on. The visitor always sees a normal "sent" message.
 
-The worker that does this runs inside the same container as the website, and restarts itself if it ever stops. Each failed attempt is written to the log:
+The worker that does this runs inside the same container as the website, and restarts itself if it ever stops. Each failed attempt is written to the log as a single line, and another line is written when the message finally prints, saying how many attempts it took:
 
 ```sh
-docker compose exec ping-app tail -f storage/logs/laravel.log
+docker compose exec ping-app sh -c 'tail -f "$(ls -t storage/logs/laravel-*.log | head -1)"'
 ```
 
-Once the retry window has passed, the job is recorded as failed and the receipt stays `has_printed = false`.
+The log starts a new file each day (`laravel-YYYY-MM-DD.log`) and keeps the last 14 days, so it can't grow without limit. After midnight, run the command again to follow the new file. Logs live inside the container, so they are cleared when it is recreated.
+
+Once the retry window has passed, the job is recorded as failed and the receipt stays `has_printed = false`. That is the one case that logs a full error.
 
 ## Recovering failed prints
 
