@@ -10,8 +10,10 @@ fi
 
 # Generate an application encryption key if one isn't set yet. To keep sessions
 # valid across container restarts, set a fixed APP_KEY via compose instead
-# (see the README).
-if ! grep -q '^APP_KEY=base64:' .env; then
+# (see the README). A key supplied that way lives in the environment, not in
+# .env, so check for it first: `key:generate` refuses to touch a .env that
+# doesn't match the key already in use and prints a misleading error.
+if [ -z "${APP_KEY:-}" ] && ! grep -q '^APP_KEY=base64:' .env; then
     php artisan key:generate --force
 fi
 
