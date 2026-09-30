@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel an in-progress run when a newer commit is pushed to the same branch/PR.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    name: Style and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: intl, mbstring, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Check code style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Run tests
+        run: php artisan test
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build only (nothing is pushed). Catches a broken Dockerfile, missing
+      # lockfile entries, or a failing asset build before it reaches your host.
+      - name: Build image
+        run: docker build --tag ping-app:ci .
+
+      # Boot the image and confirm the framework starts and serves requests.
+      - name: Smoke test
+        run: |
+          docker run -d --name ping-ci -p 8000:80 ping-app:ci
+          for i in $(seq 1 30); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/up)" = "200" ]; then
+              echo "App is up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "App did not become healthy" >&2
+          docker logs ping-ci
+          exit 1

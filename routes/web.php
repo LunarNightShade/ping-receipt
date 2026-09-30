@@ -1,12 +1,19 @@
 <?php
 
 use App\Http\Controllers\SendMessageController;
+use App\Models\Receipt;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
+    // Remember the number shown on the page so the receipt that prints carries
+    // the same one. It's kept in the session rather than a hidden form field
+    // so visitors can't pick their own.
+    $transaction = Receipt::newTransactionNumber();
+    session(['transaction' => $transaction]);
+
     return view('app', [
         'timestamp' => now()->format('m/d/y h:i A'),
-        'transaction' => str_pad(rand(1, 99999), 5, '0', STR_PAD_LEFT),
+        'transaction' => $transaction,
     ]);
 });
 
