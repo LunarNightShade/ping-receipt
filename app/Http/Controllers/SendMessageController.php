@@ -14,7 +14,9 @@ class SendMessageController extends Controller
     public function __invoke(SendMessageRequest $request)
     {
         $receipt = Receipt::create([
-            'transaction' => str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT),
+            // The number the visitor saw on the page (see routes/web.php). If
+            // the session has none, e.g. it expired, generate a fresh one.
+            'transaction' => $request->session()->pull('transaction') ?? Receipt::newTransactionNumber(),
             'message' => $request->validated('message'),
         ]);
 

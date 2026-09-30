@@ -33,16 +33,48 @@ class SendMessageTest extends TestCase
         Bus::assertDispatchedAfterResponse(PrintReceipt::class);
     }
 
-    public function test_a_transaction_number_is_generated_server_side(): void
+    public function test_the_form_page_shows_the_transaction_number_it_remembers(): void
+    {
+        $this->withoutVite();
+
+        $response = $this->get('/');
+
+        $response->assertSessionHas('transaction');
+        $transaction = session('transaction');
+
+        $this->assertMatchesRegularExpression('/^\d{5}$/', $transaction);
+        $response->assertSee($transaction);
+    }
+
+    public function test_the_receipt_uses_the_transaction_number_shown_on_the_page(): void
     {
         Bus::fake();
 
-        // A transaction sent by the client should be ignored.
-        $this->post('/send-message', ['message' => 'hi', 'transaction' => 'HACKED']);
+        $this->withSession(['transaction' => '04821'])
+            ->post('/send-message', ['message' => 'hi']);
+
+        $this->assertDatabaseHas('receipts', ['transaction' => '04821']);
+    }
+
+    public function test_a_client_supplied_transaction_number_is_ignored(): void
+    {
+        Bus::fake();
+
+        $this->withSession(['transaction' => '04821'])
+            ->post('/send-message', ['message' => 'hi', 'transaction' => 'HACKED']);
+
+        $this->assertDatabaseHas('receipts', ['transaction' => '04821']);
+        $this->assertDatabaseMissing('receipts', ['transaction' => 'HACKED']);
+    }
+
+    public function test_a_transaction_number_is_generated_when_the_session_has_none(): void
+    {
+        Bus::fake();
+
+        $this->post('/send-message', ['message' => 'hi']);
 
         $receipt = Receipt::first();
         $this->assertNotNull($receipt);
-        $this->assertNotSame('HACKED', $receipt->transaction);
         $this->assertMatchesRegularExpression('/^\d{5}$/', $receipt->transaction);
     }
 
