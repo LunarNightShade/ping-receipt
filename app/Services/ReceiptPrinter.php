@@ -18,6 +18,7 @@ class ReceiptPrinter
         $connector = new NetworkPrintConnector(
             (string) config('printer.host'),
             (int) config('printer.port'),
+            (int) config('printer.timeout'),
         );
 
         $printer = new Printer($connector);

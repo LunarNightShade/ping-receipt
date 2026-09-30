@@ -30,7 +30,7 @@ class SendMessageTest extends TestCase
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('receipts', ['message' => 'Hello, desk!']);
-        Bus::assertDispatchedAfterResponse(PrintReceipt::class);
+        Bus::assertDispatched(PrintReceipt::class);
     }
 
     public function test_the_form_page_shows_the_transaction_number_it_remembers(): void
@@ -124,7 +124,7 @@ class SendMessageTest extends TestCase
         $this->assertTrue($receipt->fresh()->has_printed);
     }
 
-    public function test_a_printer_failure_is_swallowed_and_leaves_the_receipt_unprinted(): void
+    public function test_a_printer_failure_is_rethrown_so_the_queue_retries(): void
     {
         $receipt = Receipt::create(['transaction' => '01234', 'message' => 'test']);
 
@@ -136,8 +136,12 @@ class SendMessageTest extends TestCase
             }
         };
 
-        // handle() must not re-throw (the visitor already got a response).
-        (new PrintReceipt($receipt))->handle($failing);
+        try {
+            (new PrintReceipt($receipt))->handle($failing);
+            $this->fail('The exception must propagate so the queue can retry the job.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('printer offline', $e->getMessage());
+        }
 
         $this->assertFalse($receipt->fresh()->has_printed);
     }
