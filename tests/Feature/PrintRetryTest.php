@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\PrinterUnavailableException;
 use App\Jobs\PrintReceipt;
 use App\Models\Receipt;
 use App\Services\ReceiptPrinter;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -44,7 +46,7 @@ class PrintRetryTest extends TestCase
                 if ($this->failuresLeft > 0) {
                     $this->failuresLeft--;
 
-                    throw new \RuntimeException('printer offline');
+                    throw new PrinterUnavailableException('printer offline');
                 }
 
                 $this->printed++;
@@ -75,6 +77,7 @@ class PrintRetryTest extends TestCase
 
     public function test_a_failed_print_is_retried_later_and_prints_once_the_printer_is_back(): void
     {
+        Log::spy();
         $printer = $this->fakePrinter(failures: 2);
         $receipt = $this->newReceipt();
 
@@ -111,6 +114,16 @@ class PrintRetryTest extends TestCase
         $this->assertTrue($receipt->fresh()->has_printed);
         $this->assertDatabaseCount('jobs', 0);
         $this->assertDatabaseCount('failed_jobs', 0);
+
+        // The log stays quiet while retrying: one warning per failed attempt,
+        // no error entries with stack traces, and a line once it finally prints.
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn (string $message) => $message === 'Printing failed, will retry.')
+            ->twice();
+        Log::shouldNotHaveReceived('error');
+        Log::shouldHaveReceived('info')
+            ->withArgs(fn (string $message, array $context = []) => $message === 'Printed receipt.' && ($context['attempts'] ?? null) === 3)
+            ->once();
     }
 
     public function test_it_gives_up_when_the_retry_window_closes(): void
@@ -161,6 +174,14 @@ class PrintRetryTest extends TestCase
         $this->assertSame(0, $printer->attempts);
     }
 
+    public function test_an_unreachable_printer_is_not_reported_but_other_errors_still_are(): void
+    {
+        $handler = $this->app->make(ExceptionHandler::class);
+
+        $this->assertFalse($handler->shouldReport(new PrinterUnavailableException('offline')));
+        $this->assertTrue($handler->shouldReport(new \RuntimeException('something else')));
+    }
+
     public function test_the_printer_service_sends_the_receipt_to_a_network_printer(): void
     {
         // A local TCP listener plays the part of the printer on port 9100.
@@ -207,8 +228,10 @@ class PrintRetryTest extends TestCase
         try {
             (new ReceiptPrinter)->print($this->newReceipt());
             $this->fail('Printing to an unreachable printer must throw so the queue can retry.');
-        } catch (\Exception $e) {
+        } catch (PrinterUnavailableException $e) {
             $this->assertLessThan(4, microtime(true) - $started);
+            $this->assertStringContainsString('127.0.0.1:1', $e->getMessage());
+            $this->assertNotNull($e->getPrevious(), 'The original connection error should be kept.');
         }
     }
 }

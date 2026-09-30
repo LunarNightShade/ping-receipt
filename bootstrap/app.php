@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\PrinterUnavailableException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -22,5 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
             | Request::HEADER_X_FORWARDED_PROTO);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // An unreachable printer is expected and retried automatically. Each
+        // attempt is already logged as one line by PrintReceipt, so skip the
+        // stack trace Laravel would otherwise add for every attempt.
+        $exceptions->dontReport(PrinterUnavailableException::class);
     })->create();
