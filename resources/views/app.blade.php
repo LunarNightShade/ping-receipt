@@ -85,7 +85,6 @@
                                     class="w-[48ch] font-mono p-2 box-content text-sm border border-gray-300 rounded focus:outline-none focus:ring focus:ring-gray-700 focus:border-transparent resize-none"
                                     oninput="updateCharCount()"
                                 >{{ old('message') }}</textarea>
-                                <input type="hidden" id="transaction" name="transaction" value="{{ $transaction }}">
                             </div>
 
                             {{-- Character Counter --}}
@@ -107,7 +106,7 @@
                     {{-- Submit Button --}}
                     <button
                         type="submit"
-                        onClick="document.getElementById('messageForm').submit()"
+                        form="messageForm"
                         class="w-full bg-gray-900 text-white py-3 px-4 rounded hover:bg-teal-400 hover:cursor-pointer transition-colors duration-150 font-bold text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                     >
                         Send ➤

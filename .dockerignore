@@ -1,6 +1,10 @@
 .git/
+.env
+.env.backup
+.env.production
 vendor/
 node_modules/
+bootstrap/cache/*.php
 storage/*.log
 storage/debugbar/
 public/hot
@@ -12,8 +16,7 @@ public/vendor/
 .DS_Store
 npm-debug.log
 Dockerfile
-compose.yaml
+compose.yml
 .gitattributes
 .gitignore
 README.md
-start.sh
