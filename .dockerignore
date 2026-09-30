@@ -5,7 +5,6 @@
 vendor/
 node_modules/
 bootstrap/cache/*.php
-storage/*.log
 storage/debugbar/
 public/hot
 public/build/
@@ -20,3 +19,18 @@ compose.yml
 .gitattributes
 .gitignore
 README.md
+
+# Local runtime data must never be baked into an image. These can hold real
+# visitor messages (the SQLite database), session data, and logs. The
+# placeholder .gitignore files are kept so the directories still exist.
+database/*.sqlite
+database/*.sqlite-*
+storage/logs/*.log
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+!storage/framework/cache/data/.gitignore
+!storage/framework/sessions/.gitignore
+!storage/framework/views/.gitignore
+.phpunit.cache
+.phpunit.result.cache
