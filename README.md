@@ -12,10 +12,10 @@ A tiny website that lets anyone send a short, anonymous message that prints out 
 2. Submitting posts to `/send-message`, handled by [`SendMessageController`](app/Http/Controllers/SendMessageController.php):
    - [`SendMessageRequest`](app/Http/Requests/SendMessageRequest.php) validates and cleans the text (ASCII only, converts smart quotes).
    - The message is saved as a `Receipt` row.
-   - A [`PrintReceipt`](app/Jobs/PrintReceipt.php) job is dispatched **after the response is sent**, so the visitor never waits on the printer.
-3. The job uses [`ReceiptPrinter`](app/Services/ReceiptPrinter.php) to format and send the receipt to the printer, then marks the row `has_printed`.
+   - A [`PrintReceipt`](app/Jobs/PrintReceipt.php) job is put on the queue, so the visitor never waits on the printer.
+3. A background queue worker (started automatically inside the container) picks the job up. It uses [`ReceiptPrinter`](app/Services/ReceiptPrinter.php) to format and send the receipt to the printer, then marks the row `has_printed`.
 
-If the printer is offline the message is still saved (with `has_printed = false`) and the error is logged — nothing is lost. See [Recovering failed prints](#recovering-failed-prints).
+**If the printer is off or unreachable, it retries automatically** — see [Automatic retries](#automatic-retries). The message is saved first, so nothing is lost either way.
 
 Printer connection settings live in [`config/printer.php`](config/printer.php) and are read from the environment.
 
@@ -71,6 +71,8 @@ docker compose down
 | ---------------- | ------------------ | ----------------------------------------- |
 | `PRINTER_HOST`   | `192.168.1.217`    | Printer IP address                        |
 | `PRINTER_PORT`   | `9100`             | Printer raw-print port                    |
+| `PRINTER_TIMEOUT` | `5`               | Seconds to wait when connecting to the printer |
+| `PRINTER_RETRY_HOURS` | `6`           | How long to keep retrying a failed print  |
 | `PRINTER_WIDTH`  | `48`               | Characters per printed line               |
 | `PRINTER_RECIPIENT` | `MESSAGE FOR LUNAR AURORA` | Sub-heading printed under "PING" |
 | `APP_ENV`        | `production`       | Baked into the image                      |
@@ -102,13 +104,34 @@ The `/send-message` endpoint is rate limited to 10 requests/minute per IP ([`rou
 
 ---
 
+## Automatic retries
+
+If the printer can't be reached (powered off, out of range, a network hiccup), the print job is retried on its own with a growing delay: after 10 seconds, 30 seconds, 1 minute, 5 minutes, then every 15 minutes. It keeps trying for `PRINTER_RETRY_HOURS` (6 hours by default) from the moment the message was sent, so a message sent while the printer is off still prints when you switch it back on. The visitor always sees a normal "sent" message.
+
+The worker that does this runs inside the same container as the website, and restarts itself if it ever stops. Each failed attempt is written to the log:
+
+```sh
+docker compose exec ping-app tail -f storage/logs/laravel.log
+```
+
+Once the retry window has passed, the job is recorded as failed and the receipt stays `has_printed = false`.
+
 ## Recovering failed prints
 
-If the printer was off or unreachable, reprint anything that didn't make it:
+If a print exhausted its retries, reprint anything that didn't make it:
 
 ```sh
 docker compose exec ping-app php artisan receipts:reprint          # only un-printed messages
 docker compose exec ping-app php artisan receipts:reprint --all    # every stored message
+```
+
+**Upgrading from an older version?** A one-time migration runs on first start and marks every message already in the database as printed, so `receipts:reprint` won't print your whole history again.
+
+`receipts:reprint` prints straight away, so avoid running it while a message is still being retried automatically, or it can print twice. To see what has given up (or clear the record of it):
+
+```sh
+docker compose exec ping-app php artisan queue:failed
+docker compose exec ping-app php artisan queue:flush
 ```
 
 ---
@@ -125,8 +148,10 @@ php artisan key:generate
 touch database/database.sqlite
 php artisan migrate
 
-# run the dev server + Vite together
+# run the dev server, queue worker and Vite together
 composer run dev
 ```
+
+`composer run dev` includes the queue worker, which is what actually prints receipts. If you start the server some other way, also run `php artisan queue:work` in another terminal, or messages will sit in the queue and never print.
 
 Then visit the URL shown by `php artisan serve` (usually `http://localhost:8000`).

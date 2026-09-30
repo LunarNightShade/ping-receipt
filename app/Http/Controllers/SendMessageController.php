@@ -20,10 +20,10 @@ class SendMessageController extends Controller
             'message' => $request->validated('message'),
         ]);
 
-        // Print after the HTTP response is sent, so a slow or offline printer
-        // never makes the visitor wait (or see an error). If printing fails the
-        // receipt stays unprinted and can be recovered with `receipts:reprint`.
-        PrintReceipt::dispatch($receipt)->afterResponse();
+        // Hand the print to the queue. A background worker prints it, retrying
+        // automatically if the printer is off or unreachable, so the visitor
+        // never waits on (or sees an error from) the printer. See PrintReceipt.
+        PrintReceipt::dispatch($receipt);
 
         return redirect()
             ->back()

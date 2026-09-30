@@ -21,5 +21,19 @@ if [ ! -f database/database.sqlite ]; then
 fi
 php artisan migrate --force
 
+# When starting the web server, also run the queue worker that prints receipts
+# (and retries them if the printer is unreachable). It runs in this same
+# container so the web server and worker share one SQLite database safely. The
+# loop restarts the worker if it ever exits; --max-time makes it recycle hourly.
+# Skipped for one-off commands such as `docker run ping-app php artisan ...`.
+if [ "$1" = "frankenphp" ]; then
+    (
+        while true; do
+            php artisan queue:work --sleep=3 --max-time=3600 || true
+            sleep 1
+        done
+    ) &
+fi
+
 # Hand off to FrankenPHP (the image's default command, passed in as CMD).
 exec "$@"

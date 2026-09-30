@@ -12,6 +12,8 @@ services:
       # Point this at your receipt printer on the network.
       PRINTER_HOST: "192.168.1.217"
       PRINTER_PORT: "9100"
+      # How long (hours) to keep retrying a print if the printer is unreachable.
+      PRINTER_RETRY_HOURS: "6"
       # APP_ENV/APP_DEBUG default to production/false (baked into the image).
       # Set a fixed key so sessions survive restarts (see the README):
       # APP_KEY: "base64:paste-a-generated-key-here"
