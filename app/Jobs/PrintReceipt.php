@@ -70,6 +70,11 @@ class PrintReceipt implements ShouldQueue
         // has_printed is intentionally not mass-assignable, so set it directly.
         $this->receipt->has_printed = true;
         $this->receipt->save();
+
+        Log::info('Printed receipt.', [
+            'receipt_id' => $this->receipt->id,
+            'attempts' => $this->attempts(),
+        ]);
     }
 
     /**

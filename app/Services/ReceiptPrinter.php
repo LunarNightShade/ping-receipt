@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\PrinterUnavailableException;
 use App\Models\Receipt;
 use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
 use Mike42\Escpos\Printer;
@@ -11,15 +12,19 @@ class ReceiptPrinter
     /**
      * Connect to the printer and print a single receipt.
      *
-     * Throws if the printer is unreachable; callers decide how to handle that.
+     * Throws PrinterUnavailableException if the printer can't be reached;
+     * callers decide how to handle that.
      */
     public function print(Receipt $receipt): void
     {
-        $connector = new NetworkPrintConnector(
-            (string) config('printer.host'),
-            (int) config('printer.port'),
-            (int) config('printer.timeout'),
-        );
+        $host = (string) config('printer.host');
+        $port = (int) config('printer.port');
+
+        try {
+            $connector = new NetworkPrintConnector($host, $port, (int) config('printer.timeout'));
+        } catch (\Exception $e) {
+            throw new PrinterUnavailableException("Printer at {$host}:{$port} is unreachable: {$e->getMessage()}", previous: $e);
+        }
 
         $printer = new Printer($connector);
 
